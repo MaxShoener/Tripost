@@ -1,106 +1,87 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fullscreen URL Cloaker</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>URL Cloaker (Client)</title>
 <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body, html { width: 100%; height: 100%; font-family: Arial, sans-serif; overflow: hidden; }
-
-    #inputContainer {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 25px 30px;
-        border-radius: 12px;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-        text-align: center;
-        z-index: 1000;
-    }
-    #inputContainer h2 { margin-bottom: 15px; }
-    input[type="text"] {
-        width: 100%;
-        padding: 10px;
-        font-size: 16px;
-        border-radius: 5px;
-        border: 1px solid #ccc;
-        margin-bottom: 15px;
-    }
-    button {
-        width: 100%;
-        padding: 10px;
-        font-size: 16px;
-        border: none;
-        border-radius: 5px;
-        background: #007BFF;
-        color: white;
-        cursor: pointer;
-    }
-    button:hover { background: #0056b3; }
-
-    #loadingOverlay {
-        position: fixed;
-        top:0; left:0;
-        width: 100%; height: 100%;
-        background: #f0f0f0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-size: 20px;
-        z-index: 999;
-        display: none;
-    }
-
-    iframe {
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%;
-        height: 100%;
-        border: none;
-    }
+  body,html { height:100%; margin:0; font-family:Arial,Helvetica,sans-serif; display:flex; align-items:center; justify-content:center; background:#0b1220; color:#fff;}
+  #card { background:#fff; color:#111; padding:24px; width:420px; border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
+  input[type="text"] { width:100%; padding:12px; font-size:15px; border-radius:6px; border:1px solid #ccc; box-sizing:border-box; }
+  button { margin-top:10px; width:100%; padding:10px; border:none; background:#0066ff; color:white; border-radius:6px; font-size:15px; cursor:pointer; }
+  button:hover{opacity:0.95}
+  .hint { font-size:13px; color:#555; margin-top:8px; }
 </style>
 </head>
 <body>
-
-<div id="inputContainer">
-    <h2>URL Cloaker</h2>
-    <input type="text" id="urlInput" placeholder="Enter URL or search term">
-    <button onclick="openCloaked()">Go</button>
-</div>
-
-<div id="loadingOverlay">Loading...</div>
+  <div id="card">
+    <h3>URL Cloaker</h3>
+    <input id="urlInput" placeholder="Type a URL (https://...) or search term" />
+    <button id="goBtn">Open Cloaked</button>
+    <div class="hint">Press Enter or click Open. This will open a new blank page and load the target inside.</div>
+  </div>
 
 <script>
-function openCloaked() {
-    let input = document.getElementById('urlInput').value.trim();
-    if(!input) return alert("Please enter a URL or search term.");
+const input = document.getElementById('urlInput');
+const btn = document.getElementById('goBtn');
 
-    // Detect if input is URL or search term
-    let isUrl = /^(https?:\/\/)/i.test(input);
-    let targetUrl = isUrl ? input : `https://www.google.com/search?q=${encodeURIComponent(input)}`;
-
-    // Show loading overlay
-    document.getElementById('loadingOverlay').style.display = 'flex';
-
-    // Hide input form
-    document.getElementById('inputContainer').style.display = 'none';
-
-    // Create iframe
-    let iframe = document.createElement('iframe');
-    iframe.src = targetUrl;
-    iframe.onload = () => {
-        document.getElementById('loadingOverlay').style.display = 'none';
-    };
-    iframe.onerror = () => {
-        // fallback if site blocks iframe
-        window.location.href = targetUrl;
-    };
-    document.body.appendChild(iframe);
+function prepareTarget(raw) {
+  raw = (raw || '').trim();
+  if (!raw) return null;
+  // if it looks like a URL, use it; otherwise treat as google search
+  if (/^(https?:\/\/)/i.test(raw)) return raw;
+  // quick heuristic: if it has a dot and no spaces, treat as domain
+  if (/^\S+\.\S+$/.test(raw) && !/\s/.test(raw)) {
+    return 'http://' + raw;
+  }
+  return 'https://www.google.com/search?q=' + encodeURIComponent(raw);
 }
-</script>
 
+function openCloaked() {
+  const raw = input.value;
+  const target = prepareTarget(raw);
+  if (!target) return alert('Please enter a URL or search term.');
+
+  // use our proxy endpoint to fetch the site: /proxy?u=encodedTarget
+  const proxied = '/proxy?u=' + encodeURIComponent(target);
+
+  // open about:blank and write an iframe into it so the address bar shows our domain (the proxied path)
+  const win = window.open('about:blank', '_blank');
+  if (!win) {
+    alert('Popup blocked. Allow popups for this site and try again.');
+    return;
+  }
+
+  // write loading + iframe that points to the proxied path
+  const doc = win.document;
+  doc.open();
+  doc.write(`
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Loading...</title>
+        <style>html,body{height:100%;margin:0}body{display:flex;align-items:center;justify-content:center;font-family:Arial;background:#f3f5f7}#loader{font-size:16px;color:#333}</style>
+      </head>
+      <body>
+        <div id="loader">Loading…</div>
+        <script>
+          // replace content with iframe after a short tick
+          setTimeout(() => {
+            document.body.innerHTML = '<iframe src="${proxied}" style="position:fixed;top:0;left:0;width:100%;height:100%;border:0;"></iframe>';
+          }, 10);
+        </script>
+      </body>
+    </html>
+  `);
+  doc.close();
+}
+
+// handle button + Enter key
+btn.addEventListener('click', openCloaked);
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') openCloaked();
+});
+</script>
 </body>
 </html>
