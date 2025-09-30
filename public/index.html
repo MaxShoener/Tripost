@@ -5,50 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>URL Cloaker Fullscreen</title>
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: linear-gradient(135deg,#6b73ff,#000dff);
-  }
-  #inputContainer {
-    background: #fff;
-    padding: 25px 30px;
-    border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-    width: 350px;
-    text-align: center;
-  }
-  #inputContainer input {
-    width: 100%;
-    padding: 12px;
-    font-size: 15px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    margin-bottom: 15px;
-    box-sizing: border-box;
-  }
-  #inputContainer button {
-    width: 100%;
-    padding: 12px;
-    border: none;
-    border-radius: 6px;
-    background: #0066ff;
-    color: #fff;
-    font-size: 15px;
-    cursor: pointer;
-  }
-  #inputContainer button:hover {
-    background: #0051cc;
-  }
+  html, body { margin:0; padding:0; height:100%; font-family:sans-serif; display:flex; justify-content:center; align-items:center; background:#0b1220; }
+  #inputContainer { background:#fff; padding:25px 30px; border-radius:12px; width:350px; box-shadow:0 8px 25px rgba(0,0,0,0.3); text-align:center; }
+  input { width:100%; padding:12px; margin-bottom:15px; font-size:15px; border-radius:6px; border:1px solid #ccc; }
+  button { width:100%; padding:12px; border:none; border-radius:6px; background:#0066ff; color:white; font-size:15px; cursor:pointer; }
+  button:hover { background:#0051cc; }
 </style>
 </head>
 <body>
-
 <div id="inputContainer">
   <input id="urlInput" placeholder="Enter URL or search term">
   <button id="goBtn">Open Cloaked</button>
@@ -58,55 +22,42 @@
 const input = document.getElementById('urlInput');
 const btn = document.getElementById('goBtn');
 
-function prepareTarget(raw) {
-  raw = (raw||'').trim();
+function prepareTarget(raw){
+  raw=(raw||'').trim();
   if(!raw) return null;
   if(/^(https?:\/\/)/i.test(raw)) return raw;
   if(/^\S+\.\S+$/.test(raw) && !/\s/.test(raw)) return 'http://'+raw;
   return 'https://www.google.com/search?q='+encodeURIComponent(raw);
 }
 
-function openCloaked() {
+function openCloaked(){
   const target = prepareTarget(input.value);
   if(!target) return alert('Enter a URL or search term.');
 
   const proxied = '/proxy?u=' + encodeURIComponent(target);
 
-  const win = window.open('about:blank', '_blank');
-  if(!win) return alert('Popup blocked. Allow popups for this site.');
+  const win = window.open('', '_blank');
+  if(!win){ alert('Popup blocked. Allow popups.'); return; }
 
-  const doc = win.document;
-  doc.open();
-  doc.write(`
-    <!DOCTYPE html>
+  win.document.write(`
     <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Loading...</title>
-        <style>
-          html,body{height:100%;margin:0}
-          body{display:flex;align-items:center;justify-content:center;font-family:Arial;background:#f3f5f7}
-          #loader{font-size:16px;color:#333}
-        </style>
+      <head><title>Loading...</title>
+      <style>html,body{height:100%;margin:0}body{display:flex;align-items:center;justify-content:center;font-family:sans-serif;background:#f3f3f3}#loader{font-size:16px;color:#333}</style>
       </head>
       <body>
-        <div id="loader">Loading…</div>
+        <div id="loader">Loading...</div>
         <script>
-          setTimeout(() => {
-            document.body.innerHTML = '<iframe src="${proxied}" style="position:fixed;top:0;left:0;width:100%;height:100%;border:0;"></iframe>';
-          }, 10);
+          setTimeout(()=>{document.body.innerHTML='<iframe src="${proxied}" style="position:fixed;top:0;left:0;width:100%;height:100%;border:0;"></iframe>';},10);
         </script>
       </body>
     </html>
   `);
-  doc.close();
+  win.document.close();
 }
 
-// button click
+// button + enter
 btn.addEventListener('click', openCloaked);
-// enter key
 input.addEventListener('keydown', e => { if(e.key==='Enter') openCloaked(); });
 </script>
-
 </body>
 </html>
